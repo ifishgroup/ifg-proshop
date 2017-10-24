@@ -1,0 +1,17 @@
+### Packer ###
+# Cache objects
+packer_cache/
+
+# For built boxes
+*.box
+
+### Terraform ###
+# Compiled files
+*.tfstate
+*.tfstate.backup
+
+# Module directory
+.terraform/
+
+### Terraform Patch ###
+*.tfvars

@@ -1,0 +1,10 @@
+version: '2'
+
+services:
+
+  front-end:
+    image: dlish27/ifg-proshop:0.1.0
+    ports:
+      - '80:5000'
+    environment:
+      - reschedule=on-node-failure
