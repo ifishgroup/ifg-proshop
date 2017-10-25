@@ -8,3 +8,23 @@ services:
       - '80:5000'
     environment:
       - reschedule=on-node-failure
+
+  # catalog:
+  #   image: dlish27/ifg-proshop-catalog:0.1.0
+  #   environment:
+  #     - reschedule=on-node-failure
+  #
+  # account:
+  #   image: dlish27/ifg-proshop-account:0.1.0
+  #   environment:
+  #     - reschedule=on-node-failure
+  #
+  # payment:
+  #   image: dlish27/ifg-proshop-payment:0.1.0
+  #   environment:
+  #     - reschedule=on-node-failure
+  #
+  # subscription:
+  #   image: dlish27/ifg-proshop-subscription:0.1.0
+  #   environment:
+  #     - reschedule=on-node-failure

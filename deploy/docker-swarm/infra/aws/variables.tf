@@ -1,5 +1,10 @@
-variable "aws_region" {
+variable "region" {
   default = "us-west-2"
+}
+
+variable "additional_manager_nodes" {
+  description = "Additional number of manager nodes (swarm always created with at least 1 manager)"
+  default = "2"
 }
 
 variable "num_nodes" {
@@ -22,16 +27,7 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
-variable "base_cidr_block" {
-  default = "10.0.0.0/16"
-}
-
-variable "public_subnet_az_a_cidr" {
-  description = "CIDR of us-west-2a public subnet"
-  default     = "10.0.1.0/27"
-}
-
-variable "private_subnet_az_a_cidr" {
-  description = "CIDR of us-west-2a private subnet"
-  default     = "10.0.2.0/25"
+variable "environment" {
+  description = "Environment type"
+  default = "staging"
 }

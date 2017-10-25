@@ -1,19 +1,40 @@
-provider "aws" {
-  region = "${var.aws_region}"
+terraform {
+  required_version = "~> 0.10.7"
 }
 
-data "aws_ami" "docker_swarm_ami" {
-  most_recent = true
-  filter {
-    name = "name"
-    values = ["docker-swarm"]
+provider "aws" {
+  region = "${var.region}"
+}
+
+variable "subnets" {
+  default = {
+    "0" = 0
+    "1" = 1
+    "2" = 2
   }
 }
 
-# Create a new load balancer
+module "vpc" {
+  source               = "terraform-aws-modules/vpc/aws"
+  name                 = "ifg-proshop-vpc"
+  cidr                 = "10.0.0.0/16"
+  azs                  = ["${data.aws_availability_zones.available.names[0]}", "${data.aws_availability_zones.available.names[1]}", "${data.aws_availability_zones.available.names[2]}"]
+  private_subnets      = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets       = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+  enable_nat_gateway   = true
+  single_nat_gateway   = true
+
+  tags = {
+    Owner       = "iFG Labs"
+    Environment = "staging"
+  }
+}
+
 resource "aws_elb" "elb" {
   name               = "ifg-proshop-elb"
-  subnets            = ["${aws_subnet.public_subnet_az_a.id}"]
+  subnets            = ["${module.vpc.public_subnets}"]
   security_groups    = ["${aws_security_group.elb_sg.id}"]
 
   listener {
@@ -31,7 +52,7 @@ resource "aws_elb" "elb" {
     interval            = 60
   }
 
-  instances                   = ["${aws_instance.docker_swarm_master.id}"]
+  instances                   = ["${aws_instance.docker_swarm_manager_init.id}", "${aws_instance.docker_swarm_managers.*.id}"]
   cross_zone_load_balancing   = true
   idle_timeout                = 400
   connection_draining         = true
@@ -42,46 +63,12 @@ resource "aws_elb" "elb" {
   }
 }
 
-resource "aws_instance" "docker_swarm_node" {
-  depends_on      = [ "aws_instance.docker_swarm_master" ]
-  count           = "${var.num_nodes}"
-  instance_type   = "${var.instance_type}"
-  ami             = "${data.aws_ami.docker_swarm_ami.id}"
-  key_name        = "${var.private_key_name}"
-  security_groups = ["${aws_security_group.docker_swarm_sg.id}"]
-  subnet_id       = "${aws_subnet.private_subnet_az_a.id}"
-  associate_public_ip_address = "false"
-
-  tags {
-    Name = "ifg-proshop-docker-swarm-node"
-  }
-
-  connection {
-    user = "ubuntu"
-    private_key = "${file("${var.private_key_path}")}"
-    bastion_host = "${aws_instance.docker_swarm_master.public_ip}"
-  }
-
-  provisioner "file" {
-    source = "join.sh",
-    destination = "/tmp/join.sh"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo service docker start",
-      "chmod +x /tmp/join.sh",
-      "/tmp/join.sh"
-    ]
-  }
-}
-
-resource "aws_instance" "docker_swarm_master" {
+resource "aws_instance" "docker_swarm_manager_init" {
   instance_type     = "${var.instance_type}"
   ami               = "${data.aws_ami.docker_swarm_ami.id}"
   key_name          = "${var.private_key_name}"
   security_groups   = ["${aws_security_group.docker_swarm_sg.id}"]
-  subnet_id         = "${aws_subnet.public_subnet_az_a.id}"
+  subnet_id         = "${module.vpc.public_subnets[0]}"
   associate_public_ip_address = "true"
 
   tags {
@@ -106,17 +93,89 @@ resource "aws_instance" "docker_swarm_master" {
   }
 
   provisioner "local-exec" {
-    command = "TOKEN=$(ssh -i ${var.private_key_path} -o StrictHostKeyChecking=no ubuntu@${aws_instance.docker_swarm_master.public_ip} docker swarm join-token -q worker); echo \"#!/usr/bin/env bash\ndocker swarm join --token $TOKEN ${aws_instance.docker_swarm_master.public_ip}:2377\" >| join.sh"
+    command = "TOKEN=$(ssh -i ${var.private_key_path} -o StrictHostKeyChecking=no ubuntu@${aws_instance.docker_swarm_manager_init.public_ip} docker swarm join-token -q worker); echo \"#!/usr/bin/env bash\ndocker swarm join --token $TOKEN ${aws_instance.docker_swarm_manager_init.public_ip}:2377\" >| join_worker.sh"
+  }
+
+  provisioner "local-exec" {
+    command = "TOKEN=$(ssh -i ${var.private_key_path} -o StrictHostKeyChecking=no ubuntu@${aws_instance.docker_swarm_manager_init.public_ip} docker swarm join-token -q manager); echo \"#!/usr/bin/env bash\ndocker swarm join --token $TOKEN ${aws_instance.docker_swarm_manager_init.public_ip}:2377\" >| join_manager.sh"
   }
 }
 
-resource "null_resource" "deploy_docker_stack" {
-  depends_on = [ "aws_instance.docker_swarm_node" ]
+resource "aws_instance" "docker_swarm_managers" {
+  depends_on      = [ "aws_instance.docker_swarm_manager_init" ]
+  count           = "${var.additional_manager_nodes}"
+  instance_type   = "${var.instance_type}"
+  ami             = "${data.aws_ami.docker_swarm_ami.id}"
+  key_name        = "${var.private_key_name}"
+  security_groups = ["${aws_security_group.docker_swarm_sg.id}"]
+  subnet_id       = "${module.vpc.public_subnets["${lookup(var.subnets, count.index + 1)}"]}"
+  associate_public_ip_address = "true"
+
+  tags {
+    Name = "ifg-proshop-docker-swarm-manager-${count.index}"
+  }
 
   connection {
     user = "ubuntu"
     private_key = "${file("${var.private_key_path}")}"
-    host = "${aws_instance.docker_swarm_master.public_ip}"
+  }
+
+  provisioner "file" {
+    source = "join_manager.sh",
+    destination = "/tmp/join_manager.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo service docker start",
+      "chmod +x /tmp/join_manager.sh",
+      "/tmp/join_manager.sh"
+    ]
+  }
+}
+
+
+resource "aws_instance" "docker_swarm_workers" {
+  depends_on      = [ "aws_instance.docker_swarm_manager_init" ]
+  count           = "${var.num_nodes}"
+  instance_type   = "${var.instance_type}"
+  ami             = "${data.aws_ami.docker_swarm_ami.id}"
+  key_name        = "${var.private_key_name}"
+  security_groups = ["${aws_security_group.docker_swarm_sg.id}"]
+  subnet_id       = "${module.vpc.private_subnets[0]}"
+  associate_public_ip_address = "false"
+
+  tags {
+    Name = "ifg-proshop-docker-swarm-node-${count.index}"
+  }
+
+  connection {
+    user = "ubuntu"
+    private_key = "${file("${var.private_key_path}")}"
+    bastion_host = "${aws_instance.docker_swarm_manager_init.public_ip}"
+  }
+
+  provisioner "file" {
+    source = "join_worker.sh",
+    destination = "/tmp/join_worker.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo service docker start",
+      "chmod +x /tmp/join_worker.sh",
+      "/tmp/join_worker.sh"
+    ]
+  }
+}
+
+resource "null_resource" "deploy_docker_stack" {
+  depends_on = [ "aws_instance.docker_swarm_workers" ]
+
+  connection {
+    user = "ubuntu"
+    private_key = "${file("${var.private_key_path}")}"
+    host = "${aws_instance.docker_swarm_manager_init.public_ip}"
   }
 
   provisioner "remote-exec" {
@@ -128,6 +187,10 @@ resource "null_resource" "deploy_docker_stack" {
   }
 
   provisioner "local-exec" {
-    command = "rm join.sh"
+    command = "rm join_worker.sh"
+  }
+
+  provisioner "local-exec" {
+    command = "rm join_manager.sh"
   }
 }

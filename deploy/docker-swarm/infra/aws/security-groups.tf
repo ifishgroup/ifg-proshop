@@ -1,31 +1,7 @@
-resource "aws_security_group" "elb_sg" {
-  name        = "ifg-proshop-elb-sg"
-  description = "Used in the terraform"
-  vpc_id      = "${aws_vpc.ifg_proshop_vpc.id}"
-
-  # HTTP access from anywhere
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # outbound internet access
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  depends_on = ["aws_internet_gateway.igw"]
-}
-
 resource "aws_security_group" "docker_swarm_sg" {
   name        = "ifg-proshop-docker-swarm"
   description = "allow all internal traffic, all traffic http from anywhere"
-  vpc_id      = "${aws_vpc.ifg_proshop_vpc.id}"
+  vpc_id      = "${module.vpc.vpc_id}"
 
   ingress {
     from_port   = 0
@@ -76,5 +52,27 @@ resource "aws_security_group" "docker_swarm_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  depends_on = ["aws_internet_gateway.igw"]
+  depends_on = ["module.vpc"]
+}
+
+resource "aws_security_group" "elb_sg" {
+  name        = "ifg-proshop-elb-sg"
+  description = "iFG Proshop Load Balancer"
+  vpc_id      = "${module.vpc.vpc_id}"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  depends_on = ["module.vpc"]
 }
