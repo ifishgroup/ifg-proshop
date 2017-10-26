@@ -15,7 +15,7 @@ resource "aws_security_group" "docker_swarm_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress {
+    ingress {
     from_port   = 30000
     to_port     = 30000
     protocol    = "tcp"
@@ -49,6 +49,39 @@ resource "aws_security_group" "docker_swarm_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  depends_on = ["module.vpc"]
+}
+
+resource "aws_security_group" "docker_swarm_managers_sg" {
+  name        = "ifg-proshop-docker-swarm"
+  description = "allow all internal traffic, all traffic http from anywhere"
+  vpc_id      = "${module.vpc.vpc_id}"
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 9200
+    to_port     = 9200
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

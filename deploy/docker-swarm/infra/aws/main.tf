@@ -172,6 +172,7 @@ resource "null_resource" "create_docker_networks" {
 
   provisioner "remote-exec" {
     inline = [
+      "docker network create --driver overlay monitoring",
       "docker network create --driver overlay frontend",
       "docker network create --driver overlay services",
       "docker network create --driver overlay backend"
@@ -202,17 +203,27 @@ resource "null_resource" "deploy_docker_stack" {
   }
 }
 
-# resource "null_resource" "cleanup" {
-#   depends_on = [ "null_resource.deploy_docker_stack" ]
-#
-#   provisioner "local-exec" {
-#     command = "rm join_worker.sh"
-#   }
-#
-#   provisioner "local-exec" {
-#     command = "rm join_manager.sh"
-#   }
-# }
+resource "null_resource" "deploy_monitoring_stack" {
+  depends_on = [ "aws_instance.docker_swarm_workers", "null_resource.create_docker_networks" ]
+
+  connection {
+    user = "ubuntu"
+    private_key = "${file("${var.private_key_path}")}"
+    host = "${aws_instance.docker_swarm_manager_init.public_ip}"
+  }
+
+  provisioner "file" {
+    source = "monitoring/"
+    destination = "/tmp/monitoring/deploy-monitoring-services.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker stack deploy -c /tmp/docker-compose.yml ifg-proshop"
+    ]
+  }
+}
+
 
 resource "null_resource" "launch_weave_scope" {
   depends_on = [ "aws_instance.docker_swarm_manager_init" ]
@@ -227,5 +238,17 @@ resource "null_resource" "launch_weave_scope" {
     inline = [
       "docker service create --name scope-launcher --mode global --detach --restart-condition none --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock weaveworks/scope-swarm-launcher scope launch --service-token=${var.weave_cloud_token}"
     ]
+  }
+}
+
+resource "null_resource" "cleanup" {
+  depends_on = [ "null_resource.deploy_docker_stack" ]
+
+  provisioner "local-exec" {
+    command = "rm join_worker.sh"
+  }
+
+  provisioner "local-exec" {
+    command = "rm join_manager.sh"
   }
 }
