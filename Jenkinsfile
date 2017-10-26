@@ -20,17 +20,17 @@ try {
             }
 
             stage('build AMIs') {
-                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/deploy/docker-swarm/packer -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
+                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/deploy/docker-swarm/packer -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
             }
 
             stage('validate AWS configuration') {
-                sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID hashicorp/terraform:light init deploy/docker-swarm/terraform/aws"
-                sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID hashicorp/terraform:light validate deploy/docker-swarm/terraform/aws"
+                sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light init deploy/docker-swarm/terraform/aws"
+                sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light validate deploy/docker-swarm/terraform/aws"
             }
 
             if (env.BRANCH_NAME =~ /(?i)^pr-/ || env.BRANCH_NAME == "master") {
                 stage('plan staged deployment') {
-                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -out -var 'environment=staging' staging-${version} deploy/docker-swarm/terraform/aws"
+                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -out -var 'environment=staging' staging-${version} deploy/docker-swarm/terraform/aws"
                 }
 
                 try {
@@ -74,11 +74,11 @@ try {
 
             if (env.BRANCH_NAME == "master") {
                 stage('plan blue/green deployment') {
-                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -out production-${version} -var 'environment=production' deploy/docker-swarm/terraform/aws"
+                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -out production-${version} -var 'environment=production' deploy/docker-swarm/terraform/aws"
                 }
 
                 stage('deploy to production') {
-                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID hashicorp/terraform:light apply production-${version}"
+                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light apply production-${version}"
                 }
 
                 stage('run production readiness tests') {
