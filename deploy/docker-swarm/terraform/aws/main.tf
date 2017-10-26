@@ -219,6 +219,7 @@ resource "null_resource" "deploy_monitoring_stack" {
 
   provisioner "remote-exec" {
     inline = [
+      "mkdir /tmp/monitoring/data/prometheus",
       "chmod +x /tmp/monitoring/deploy-monitoring-services.sh",
       "/tmp/monitoring/deploy-monitoring-services.sh $(hostname)"
     ]
