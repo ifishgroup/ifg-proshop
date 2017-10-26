@@ -21,6 +21,8 @@ try {
 
             stage('build AMIs') {
                 sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/deploy/docker-swarm/packer -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
+                // bug where ami id is not updated in AWS by the time terraform runs
+                sleep 60
             }
 
             stage('validate AWS configuration') {
