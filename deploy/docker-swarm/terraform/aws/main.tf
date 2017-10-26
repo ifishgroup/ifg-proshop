@@ -61,7 +61,7 @@ resource "aws_instance" "docker_swarm_manager_init" {
   instance_type          = "${var.instance_type}"
   ami                    = "${data.aws_ami.docker_swarm_ami.id}"
   key_name               = "${var.private_key_name}"
-  vpc_security_group_ids = ["${aws_security_group.docker_swarm_sg.id}"]
+  vpc_security_group_ids = ["${aws_security_group.docker_swarm_sg.id}", "${aws_security_group.docker_swarm_managers_sg.id}"]
   subnet_id              = "${module.vpc.public_subnets[0]}"
   associate_public_ip_address = "true"
 
@@ -97,7 +97,7 @@ resource "aws_instance" "docker_swarm_managers" {
   instance_type          = "${var.instance_type}"
   ami                    = "${data.aws_ami.docker_swarm_ami.id}"
   key_name               = "${var.private_key_name}"
-  vpc_security_group_ids = ["${aws_security_group.docker_swarm_sg.id}"]
+  vpc_security_group_ids = ["${aws_security_group.docker_swarm_sg.id}", "${aws_security_group.docker_swarm_managers_sg.id}"]
   subnet_id              = "${element(module.vpc.public_subnets, count.index + 1)}"
   associate_public_ip_address = "true"
 
@@ -213,13 +213,14 @@ resource "null_resource" "deploy_monitoring_stack" {
   }
 
   provisioner "file" {
-    source = "monitoring/"
-    destination = "/tmp/monitoring/deploy-monitoring-services.sh"
+    source = "monitoring"
+    destination = "/tmp/monitoring"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "docker stack deploy -c /tmp/docker-compose.yml ifg-proshop"
+      "chmod +x /tmp/monitoring/deploy-monitoring-services.sh",
+      "/tmp/monitoring/deploy-monitoring-services.sh $(hostname)"
     ]
   }
 }

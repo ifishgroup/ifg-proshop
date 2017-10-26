@@ -56,8 +56,8 @@ resource "aws_security_group" "docker_swarm_sg" {
 }
 
 resource "aws_security_group" "docker_swarm_managers_sg" {
-  name        = "ifg-proshop-docker-swarm"
-  description = "allow all internal traffic, all traffic http from anywhere"
+  name        = "ifg-proshop-docker-swarm-managers"
+  description = "opens additional ports to docker swarm managers"
   vpc_id      = "${module.vpc.vpc_id}"
 
   ingress {

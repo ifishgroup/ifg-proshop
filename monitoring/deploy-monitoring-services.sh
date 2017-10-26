@@ -4,7 +4,7 @@ echo "Deploying node-exporter service"
 docker service create \
      --name node-exporter \
      --mode global \
-     --network proxy \
+     --network monitoring \
      --mount "type=bind,source=/proc,target=/host/proc" \
      --mount "type=bind,source=/sys,target=/host/sys" \
      --mount "type=bind,source=/,target=/rootfs" \
@@ -22,7 +22,7 @@ docker service create \
     --name cadvisor \
     -p 8080:8080 \
     --mode global \
-    --network proxy \
+    --network monitoring \
     --mount "type=bind,source=/,target=/rootfs" \
     --mount "type=bind,source=/var/run,target=/var/run" \
     --mount "type=bind,source=/sys,target=/sys" \
@@ -33,24 +33,25 @@ docker service create \
 echo "Deploying Prometheus service"
 docker service create \
     --name prometheus \
-    --network proxy \
+    --constraint "node.hostname == $1" \
+    --network monitoring \
     -p 9090:9090 \
-    --mount "type=bind,source=$PWD/conf/prometheus.yml,target=/etc/prometheus/prometheus.yml" \
-    --mount "type=volume,volume-driver=cloudstor:aws,source=sharedvol1,destination=/shareddata" \
+    --mount "type=bind,source=/tmp/monitoring/conf/prometheus.yml,target=/etc/prometheus/prometheus.yml" \
+    --mount "type=bind,source=/tmp/monitoring/data/prometheus,target=/prometheus" \
     prom/prometheus:v1.2.1
 
 
 echo "Deploying Grafana service"
 docker service create \
     --name grafana \
-    --network proxy \
+    --network monitoring \
     -p 3000:3000 \
     grafana/grafana:3.1.1
 
 echo "Deploying ElasticSearch service"
 docker service create \
     --name elasticsearch \
-    --network proxy \
+    --network monitoring \
     --reserve-memory 300m \
     -p 9200:9200 \
     elasticsearch:2.4
@@ -59,7 +60,7 @@ echo "Deploying Logstash service"
 docker service create \
     --name logstash \
     --mount "type=bind,source=$PWD/conf,target=/conf" \
-    --network proxy \
+    --network monitoring \
     -e LOGSPOUT=ignore \
     logstash:2.4 \
     logstash -f /conf/logstash.conf
@@ -67,7 +68,7 @@ docker service create \
 echo "Deploying Logspout service"
 docker service create \
     --name logspout \
-    --network proxy \
+    --network monitoring \
     --mode global \
     --mount "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock" \
     -e SYSLOG_FORMAT=rfc3164 \

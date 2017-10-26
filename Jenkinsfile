@@ -20,8 +20,6 @@ try {
             }
 
             stage('build AMIs') {
-                sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ node:8.7.0 yarn --cwd /usr/src/"
-                sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ node:8.7.0 yarn --cwd /usr/src/"
                 sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm hashicorp/packer:light build -var 'aws_region=${awsRegion}' -only=amazon-ebs -force packer.json"
             }
 
@@ -34,43 +32,41 @@ try {
                     sh "docker run --rm hashicorp/terraform:light plan -out staging-${version} ${env.WORKSPACE}/deploy/docker-swarm/infra/aws"
                 }
 
-                if (env.BRANCH_NAME =~ /(?i)^pr-/) {
-                    try {
-                        stage('provision staging') {
-                            echo """
-                                provision aws environment
-                                deploy container
-                            """
-                        }
+                try {
+                    stage('provision staging') {
+                        echo """
+                            provision aws environment
+                            deploy container
+                        """
+                    }
 
-                        stage('production readiness checks') {
-                            echo "run checks"
-                        }
+                    stage('production readiness checks') {
+                        echo "run checks"
+                    }
 
-                        stage('security checkpoint') {
-                            echo "security"
-                        }
+                    stage('security checkpoint') {
+                        echo "security"
+                    }
 
-                        stage('UAT') {
-                            def userInput = input(
-                                    id: 'userInput',
-                                    message: "Did staged build 'pass' or 'fail'?",
-                                    parameters: [choice(name: 'result', choices: 'pass\nfail', description: '')]
-                            )
+                    stage('UAT') {
+                        def userInput = input(
+                                id: 'userInput',
+                                message: "Did staged build 'pass' or 'fail'?",
+                                parameters: [choice(name: 'result', choices: 'pass\nfail', description: '')]
+                        )
 
-                            if (userInput == "fail") {
-                                error("Staged build failed user acceptance testing")
-                            }
+                        if (userInput == "fail") {
+                            error("Staged build failed user acceptance testing")
                         }
+                    }
 
-                    } catch (Exception e) {
-                        throw e
-                    } finally {
-                        stage('staging teardown') {
-                            echo "teardown staged environment"
-                            // notifyGithub("Staged build @ $ip was removed")
-                            // slackSend(color: 'good', message: "Staged build @ $ip was removed")
-                        }
+                } catch (Exception e) {
+                    throw e
+                } finally {
+                    stage('staging teardown') {
+                        echo "teardown staged environment"
+                        // notifyGithub("Staged build @ $ip was removed")
+                        // slackSend(color: 'good', message: "Staged build @ $ip was removed")
                     }
                 }
             }
