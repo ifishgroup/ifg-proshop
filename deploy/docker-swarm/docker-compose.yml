@@ -3,7 +3,7 @@ version: '3'
 services:
 
   front-end:
-    image: dlish27/ifg-proshop:0.1.1
+    image: dlish27/ifg-proshop:1.0.1
     ports:
       - '80:5000'
     networks:

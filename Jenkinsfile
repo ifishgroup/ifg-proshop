@@ -5,6 +5,7 @@ def proshopVersion = "1.0.0"
 def catalogVersion = "1.0.0"
 def accountVersion = "1.0.0"
 def awsRegion      = "us-west-2"
+def rebuildAmi     = false
 
 try {
     node('docker') {
@@ -20,9 +21,13 @@ try {
             }
 
             stage('build AMIs') {
-                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/deploy/docker-swarm/packer -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
-                // bug where ami id is not updated in AWS by the time terraform runs
-                sleep 60
+                if (rebuildAmi) {
+                    sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/deploy/docker-swarm/packer -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
+                    // bug where ami id is not updated in AWS by the time terraform runs
+                    sleep 60
+                } else {
+                    echo "Skipping build"
+                }
             }
 
             stage('validate AWS configuration') {
