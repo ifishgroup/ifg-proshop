@@ -20,7 +20,7 @@ try {
             }
 
             stage('build AMIs') {
-                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
+                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force ${env.WORKSPACE}/deploy/docker-swarm/packer/packer.json"
             }
 
             stage('validate AWS configuration') {
