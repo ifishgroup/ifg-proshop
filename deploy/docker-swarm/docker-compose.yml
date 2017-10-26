@@ -3,7 +3,7 @@ version: '3'
 services:
 
   front-end:
-    image: dlish27/ifg-proshop:0.1.0
+    image: dlish27/ifg-proshop:0.1.1
     ports:
       - '80:5000'
     networks:
@@ -23,7 +23,7 @@ services:
         window: 120s
 
   catalog:
-    image: dlish27/ifg-proshop-catalog-service:0.1.2
+    image: dlish27/ifg-proshop-catalog-service:0.1.1
     depends_on:
         - mysql
     networks:
