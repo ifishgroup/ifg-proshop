@@ -20,7 +20,7 @@
         },
         "instance_type": "t2.micro",
         "ssh_username": "ubuntu",
-        "ami_name": "docker-swarm"
+        "ami_name": "{{user `ami_name`}}"
     },{
         "type": "virtualbox-iso",
         "guest_os_type": "Ubuntu_64",
@@ -106,6 +106,7 @@
         "iso_checksum_type": "sha256",
         "memory": "2048",
         "mirror": "http://releases.ubuntu.com",
-        "ssh_timeout": "60m"
+        "ssh_timeout": "60m",
+        "ami_name": "docker-swarm"
     }
 }

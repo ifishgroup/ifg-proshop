@@ -20,16 +20,16 @@ try {
             }
 
             stage('build AMIs') {
-                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm hashicorp/packer:light build -var 'aws_region=${awsRegion}' -only=amazon-ebs -force packer.json"
+                sh "cd ${env.WORKSPACE}/deploy/docker-swarm/packer && docker run --rm hashicorp/packer:light build -var 'aws_region=${awsRegion}' -var 'ami_name=docker-swarm' -only=amazon-ebs -force packer.json"
             }
 
             stage('validate AWS configuration') {
-                sh "docker run --rm hashicorp/terraform:light validate ${env.WORKSPACE}/deploy/docker-swarm/infra/aws"
+                sh "docker run --rm hashicorp/terraform:light validate ${env.WORKSPACE}/deploy/docker-swarm/terraform/aws"
             }
 
             if (env.BRANCH_NAME =~ /(?i)^pr-/ || env.BRANCH_NAME == "master") {
                 stage('plan staged deployment') {
-                    sh "docker run --rm hashicorp/terraform:light plan -out staging-${version} ${env.WORKSPACE}/deploy/docker-swarm/infra/aws"
+                    sh "docker run --rm hashicorp/terraform:light plan -out -var 'environment=staging' staging-${version} ${env.WORKSPACE}/deploy/docker-swarm/terraform/aws"
                 }
 
                 try {
@@ -73,11 +73,11 @@ try {
 
             if (env.BRANCH_NAME == "master") {
                 stage('plan blue/green deployment') {
-                    echo "deploy service to production"
+                    sh "docker run --rm hashicorp/terraform:light plan -out production-${version} -var 'environment=production' ${env.WORKSPACE}/deploy/docker-swarm/terraform/aws"
                 }
 
                 stage('deploy to production') {
-                    echo "deploy service to production"
+                    sh "docker run --rm hashicorp/terraform:light apply production-${version}"
                 }
 
                 stage('run production readiness tests') {
