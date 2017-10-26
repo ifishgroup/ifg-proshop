@@ -24,18 +24,18 @@
     },{
         "type": "virtualbox-iso",
         "guest_os_type": "Ubuntu_64",
-        "vm_name": "docker-swarm",
-        "iso_url": "http://releases.ubuntu.com/16.04/ubuntu-16.04-server-amd64.iso",
-        "iso_checksum": "23e97cd5d4145d4105fbf29878534049",
-        "iso_checksum_type": "md5",
-        "disk_size" : 10000,
-        "ssh_username": "vagrant",
-        "ssh_password": "vagrant",
-        "ssh_wait_timeout": "10000s",
-        "http_directory": "packer",
-        "headless": "true",
-        "boot_wait": "5s",
-        "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
+        "iso_urls": [
+            "iso/ubuntu-16.04.3-server-amd64.iso",
+            "{{user `mirror`}}/16.04/ubuntu-16.04.3-server-amd64.iso"
+        ],
+        "iso_checksum": "{{user `iso_checksum`}}",
+        "iso_checksum_type": "{{user `iso_checksum_type`}}",
+        "output_directory": "output-ubuntu-16.04-amd64-{{build_type}}",
+        "vm_name": "packer-ubuntu-16.04-amd64",
+        "disk_size": "{{user `disk_size`}}",
+        "headless": "{{user `headless`}}",
+        "http_directory": "http",
+        "boot_wait": "10s",
         "boot_command": [
             "<enter><wait><f6><esc><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
             "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
@@ -61,21 +61,29 @@
             " preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg",
             " -- <wait>",
             " <enter><wait>"
+        ],
+        "ssh_timeout": "{{user `ssh_timeout`}}",
+        "ssh_username": "vagrant",
+        "ssh_password": "vagrant",
+        "shutdown_command": "sudo systemctl poweroff",
+        "vboxmanage": [
+          ["modifyvm", "{{.Name}}", "--memory", "{{user `memory`}}"],
+          ["modifyvm", "{{.Name}}", "--cpus", "{{user `cpus`}}"]
         ]
     }],
     "provisioners": [{
         "type": "shell",
         "inline": [
             "sleep 30",
-            "sudo curl -fsSL https://experimental.docker.com/ | sh",
-            "sudo usermod -aG docker $(whoami)",
-            "sudo curl -L \"https://github.com/docker/compose/releases/download/1.8.1/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose",
-            "sudo chmod +x /usr/local/bin/docker-compose",
             "sudo curl -L git.io/scope -o /usr/local/bin/scope",
             "sudo chmod a+x /usr/local/bin/scope",
             "sudo curl -L git.io/weave -o /usr/local/bin/weave",
             "sudo chmod +x /usr/local/bin/weave"
         ]
+    },{
+        "type": "shell",
+        "script": "scripts/docker.sh",
+        "execute_command": "chmod +x {{ .Path }}; {{ .Vars }} sudo -E '{{ .Path }}'"
     }],
     "post-processors": [{
         "type": "vagrant",
@@ -88,5 +96,16 @@
         "inline": [
             "vagrant box add --force docker-swarm infra/local/docker-swarm.box"
         ]
-    }]
+    }],
+    "variables": {
+        "compression_level": "6",
+        "cpus": "2",
+        "disk_size": "40000",
+        "headless": "false",
+        "iso_checksum": "a06cd926f5855d4f21fb4bc9978a35312f815fbda0d0ef7fdc846861f4fc4600",
+        "iso_checksum_type": "sha256",
+        "memory": "2048",
+        "mirror": "http://releases.ubuntu.com",
+        "ssh_timeout": "60m"
+    }
 }

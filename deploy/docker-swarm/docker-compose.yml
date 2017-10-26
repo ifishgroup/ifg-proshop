@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 
 services:
 
@@ -6,25 +6,89 @@ services:
     image: dlish27/ifg-proshop:0.1.0
     ports:
       - '80:5000'
-    environment:
-      - reschedule=on-node-failure
+    networks:
+      - frontend
+      - services
+      - default
+    deploy:
+      mode: replicated
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
 
-  # catalog:
-  #   image: dlish27/ifg-proshop-catalog:0.1.0
-  #   environment:
-  #     - reschedule=on-node-failure
-  #
-  # account:
-  #   image: dlish27/ifg-proshop-account:0.1.0
-  #   environment:
-  #     - reschedule=on-node-failure
-  #
-  # payment:
-  #   image: dlish27/ifg-proshop-payment:0.1.0
-  #   environment:
-  #     - reschedule=on-node-failure
-  #
-  # subscription:
-  #   image: dlish27/ifg-proshop-subscription:0.1.0
-  #   environment:
-  #     - reschedule=on-node-failure
+  catalog:
+    image: dlish27/ifg-proshop-catalog-service:0.1.2
+    depends_on:
+        - mysql
+    networks:
+      - services
+      - backend
+    command: ["./wait-for.sh", "mysql:3306", "--", "java", "-jar", "/ifg-proshop-catalog.jar"]
+    environment:
+      - DATABASE_HOST=mysql
+      - DATABASE_USER=spring
+      - DATABASE_PASSWORD=password
+      - DATABASE_NAME=ifgproshop
+      - DATABASE_PORT=3306
+    deploy:
+      mode: replicated
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+
+  mysql:
+    image: mysql
+    networks:
+      - backend
+    environment:
+      - MYSQL_USER=spring
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=ifgproshop
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+
+  account:
+    image: dlish27/ifg-proshop-account-service:0.1.1
+    networks:
+      - services
+      - backend
+    depends_on:
+        - account-db
+    deploy:
+      mode: replicated
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  account-db:
+    image: dlish27/ifg-proshop-account-service-db:0.1.1
+    networks:
+      - backend
+
+networks:
+   default:
+     external: false
+   frontend:
+     external: true
+   services:
+     external: true
+   backend:
+     external: true

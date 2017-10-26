@@ -15,3 +15,5 @@ packer_cache/
 
 ### Terraform Patch ###
 *.tfvars
+
+**/iso
