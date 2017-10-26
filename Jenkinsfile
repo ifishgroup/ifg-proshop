@@ -30,7 +30,7 @@ try {
 
             if (env.BRANCH_NAME =~ /(?i)^pr-/ || env.BRANCH_NAME == "master") {
                 stage('plan staged deployment') {
-                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -out -var 'environment=staging' staging-${version} deploy/docker-swarm/terraform/aws"
+                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -var 'environment=staging' -out staging-${version} deploy/docker-swarm/terraform/aws"
                 }
 
                 try {
@@ -74,7 +74,7 @@ try {
 
             if (env.BRANCH_NAME == "master") {
                 stage('plan blue/green deployment') {
-                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -out production-${version} -var 'environment=production' deploy/docker-swarm/terraform/aws"
+                    sh "docker run --rm -v ${env.WORKSPACE}:/usr/src/ -v $HOME/.ssh:/root/.ssh -w /usr/src/ -e AWS_SECRET_ACCESS_KEY=$env.AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$env.AWS_ACCESS_KEY_ID hashicorp/terraform:light plan -var 'environment=production' -out production-${version}  deploy/docker-swarm/terraform/aws"
                 }
 
                 stage('deploy to production') {
